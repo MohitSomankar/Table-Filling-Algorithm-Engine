@@ -1,0 +1,6 @@
+{
+  "name": "Table-Filling Algorithm Engine",
+  "description": "Myhill-Nerode DFA state minimization engine with interactive table filling, step-by-step equivalence class derivation, and desktop install support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="gridGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Squircle with safe margin -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Triangular Grid in Background -->
+  <g opacity="0.25" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4">
+    <line x1="96" y1="96" x2="416" y2="416"/>
+    <line x1="96" y1="256" x2="416" y2="256"/>
+    <line x1="256" y1="96" x2="256" y2="416"/>
+  </g>
+
+  <!-- Table-Filling Grid Accent Cards (Lower Triangular Table Representation) -->
+  <g transform="translate(48, 48)">
+    <!-- Cell (1,0) -->
+    <rect x="70" y="160" width="80" height="80" rx="14" fill="#1e293b" stroke="#3b82f6" stroke-width="3"/>
+    <path d="M96 186 L124 214 M124 186 L96 214" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Cell (2,0) -->
+    <rect x="70" y="260" width="80" height="80" rx="14" fill="#1e293b" stroke="#3b82f6" stroke-width="3"/>
+    <!-- Equivalence symbol = -->
+    <line x1="94" y1="294" x2="126" y2="294" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+    <line x1="94" y1="306" x2="126" y2="306" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Cell (2,1) -->
+    <rect x="170" y="260" width="80" height="80" rx="14" fill="#1e293b" stroke="#3b82f6" stroke-width="3"/>
+    <path d="M196 286 L224 314 M224 286 L196 314" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Connected State Nodes (q0, q1, q2) -->
+    <!-- Start State q0 -->
+    <circle cx="210" cy="90" r="34" fill="#0f172a" stroke="#38bdf8" stroke-width="4"/>
+    <text x="210" y="97" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#38bdf8" text-anchor="middle">q₀</text>
+    
+    <!-- State q1 -->
+    <circle cx="330" cy="180" r="34" fill="#0f172a" stroke="#a855f7" stroke-width="4"/>
+    <text x="330" y="187" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#a855f7" text-anchor="middle">q₁</text>
+
+    <!-- State q2 (Double circle - accepting state) -->
+    <circle cx="300" cy="300" r="36" fill="#0f172a" stroke="#10b981" stroke-width="4"/>
+    <circle cx="300" cy="300" r="28" fill="none" stroke="#10b981" stroke-width="2.5"/>
+    <text x="300" y="307" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#10b981" text-anchor="middle">q₂</text>
+
+    <!-- Transition Arcs -->
+    <path d="M236 112 Q280 120 306 156" fill="none" stroke="#60a5fa" stroke-width="3.5" stroke-dasharray="4 2"/>
+    <polygon points="306,156 296,150 302,142" fill="#60a5fa"/>
+
+    <path d="M340 216 Q346 250 326 274" fill="none" stroke="#c084fc" stroke-width="3.5"/>
+    <polygon points="326,274 336,270 330,262" fill="#c084fc"/>
+
+    <!-- Start Arrow -->
+    <path d="M140 90 L172 90" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="174,90 162,83 162,97" fill="#38bdf8"/>
+  </g>
+</svg>

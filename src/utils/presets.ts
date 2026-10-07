@@ -1,0 +1,98 @@
+import { DFAPreset } from '../types/dfa';
+
+export const DFA_PRESETS: DFAPreset[] = [
+  {
+    id: 'classic_5_state',
+    name: 'Classic 5-State DFA (Hopcroft & Ullman)',
+    description: 'Standard textbook problem. States q₀ and q₂ are equivalent on both symbols 0 and 1.',
+    sampleTestString: '1011',
+    dfa: {
+      states: ['q0', 'q1', 'q2', 'q3', 'q4'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q4'],
+      transitions: {
+        q0: { '0': 'q1', '1': 'q2' },
+        q1: { '0': 'q1', '1': 'q3' },
+        q2: { '0': 'q1', '1': 'q2' },
+        q3: { '0': 'q1', '1': 'q4' },
+        q4: { '0': 'q1', '1': 'q2' },
+      },
+    },
+  },
+  {
+    id: 'textbook_6_state',
+    name: 'Textbook 6-State DFA (Multiple Merges)',
+    description: '6-state machine with equivalence classes: {A, E} and {C, D} reduce into 4 minimal states.',
+    sampleTestString: '0101',
+    dfa: {
+      states: ['A', 'B', 'C', 'D', 'E', 'F'],
+      alphabet: ['0', '1'],
+      startState: 'A',
+      finalStates: ['C', 'D'],
+      transitions: {
+        A: { '0': 'B', '1': 'A' },
+        B: { '0': 'A', '1': 'C' },
+        C: { '0': 'D', '1': 'B' },
+        D: { '0': 'D', '1': 'A' },
+        E: { '0': 'D', '1': 'F' },
+        F: { '0': 'C', '1': 'E' },
+      },
+    },
+  },
+  {
+    id: 'div_parity_6_state',
+    name: 'Binary Divisibility & Redundant States',
+    description: 'A 6-state DFA tracking binary remainders with paired mirror states {q1, q4} and {q2, q5}.',
+    sampleTestString: '110',
+    dfa: {
+      states: ['q0', 'q1', 'q2', 'q3', 'q4', 'q5'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q0', 'q3'],
+      transitions: {
+        q0: { '0': 'q0', '1': 'q1' },
+        q1: { '0': 'q2', '1': 'q0' },
+        q2: { '0': 'q1', '1': 'q2' },
+        q3: { '0': 'q3', '1': 'q4' },
+        q4: { '0': 'q5', '1': 'q3' },
+        q5: { '0': 'q4', '1': 'q5' },
+      },
+    },
+  },
+  {
+    id: 'already_minimal_3_state',
+    name: 'Already Minimal DFA (Substring "01")',
+    description: 'Accepts strings containing "01". All 3 states are pairwise distinguishable; 0 classes merged.',
+    sampleTestString: '101',
+    dfa: {
+      states: ['q0', 'q1', 'q2'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q2'],
+      transitions: {
+        q0: { '0': 'q1', '1': 'q0' },
+        q1: { '0': 'q1', '1': 'q2' },
+        q2: { '0': 'q2', '1': 'q2' },
+      },
+    },
+  },
+  {
+    id: 'unreachable_state_demo',
+    name: 'DFA with Unreachable Dead State',
+    description: 'Demonstrates unreachable state detection. State q_dead cannot be reached from start state q0.',
+    sampleTestString: '01',
+    dfa: {
+      states: ['q0', 'q1', 'q2', 'q_dead'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q2'],
+      transitions: {
+        q0: { '0': 'q1', '1': 'q0' },
+        q1: { '0': 'q1', '1': 'q2' },
+        q2: { '0': 'q2', '1': 'q2' },
+        q_dead: { '0': 'q0', '1': 'q1' },
+      },
+    },
+  },
+];
