@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { DFA, DFAPreset } from '../types/dfa';
 import { DFA_PRESETS } from '../utils/presets';
-import { Plus, Trash2, Play, Sparkles, AlertCircle, HelpCircle } from 'lucide-react';
+import { validateDFA, DFAValidationResult } from '../utils/dfaValidator';
+import { JSONModal } from './JSONModal';
+import {
+  Plus,
+  Trash2,
+  Play,
+  Sparkles,
+  AlertCircle,
+  HelpCircle,
+  CheckCircle2,
+  XCircle,
+  Upload,
+  Download,
+  RotateCcw,
+  FilePlus2,
+  Eraser,
+  Tag,
+  AlertTriangle,
+} from 'lucide-react';
 
 interface DFAEditorProps {
   dfa: DFA;
@@ -21,6 +39,12 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
   unreachableStates = [],
 }) => {
   const [showHelp, setShowHelp] = useState(false);
+  const [jsonModalMode, setJsonModalMode] = useState<'import' | 'export' | null>(null);
+  const [newSymbolInput, setNewSymbolInput] = useState('');
+  const [newStateInput, setNewStateInput] = useState('');
+
+  // Live DFA Validation
+  const validation: DFAValidationResult = validateDFA(dfa);
 
   // Helper to update a transition
   const handleTransitionChange = (fromState: string, symbol: string, toState: string) => {
@@ -58,40 +82,40 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
   };
 
   // Helper to add a state
-  const handleAddState = () => {
-    if (dfa.states.length >= 8) return;
-    const nextIndex = dfa.states.length;
-    let nextName = `q${nextIndex}`;
-    while (dfa.states.includes(nextName)) {
-      nextName = `q${Math.floor(Math.random() * 100)}`;
-    }
-    const newStates = [...dfa.states, nextName];
-    // Default transitions to itself
+  const handleAddState = (customName?: string) => {
+    if (dfa.states.length >= 10) return;
+    const nameToAdd = customName?.trim() || `q${dfa.states.length}`;
+    if (!nameToAdd || dfa.states.includes(nameToAdd)) return;
+
+    const newStates = [...dfa.states, nameToAdd];
     const newTransitions = { ...dfa.transitions };
-    newTransitions[nextName] = {};
+    newTransitions[nameToAdd] = {};
     for (const sym of dfa.alphabet) {
-      newTransitions[nextName][sym] = nextName;
+      newTransitions[nameToAdd][sym] = nameToAdd;
     }
     onChange({
       ...dfa,
       states: newStates,
       transitions: newTransitions,
     });
+    setNewStateInput('');
   };
 
-  // Helper to remove last state
+  // Helper to remove a state
   const handleRemoveState = (stateToRemove: string) => {
-    if (dfa.states.length <= 2) return;
+    if (dfa.states.length <= 1) return;
     const newStates = dfa.states.filter((s) => s !== stateToRemove);
     const newFinalStates = dfa.finalStates.filter((s) => s !== stateToRemove);
-    const newStartState = dfa.startState === stateToRemove ? newStates[0] : dfa.startState;
+    const newStartState =
+      dfa.startState === stateToRemove ? newStates[0] || '' : dfa.startState;
 
     const newTransitions: Record<string, Record<string, string>> = {};
     for (const st of newStates) {
       newTransitions[st] = {};
       for (const sym of dfa.alphabet) {
         const currTarget = dfa.transitions[st]?.[sym];
-        newTransitions[st][sym] = currTarget === stateToRemove ? newStates[0] : (currTarget || newStates[0]);
+        newTransitions[st][sym] =
+          currTarget === stateToRemove ? newStates[0] || '' : (currTarget || newStates[0] || '');
       }
     }
 
@@ -104,7 +128,45 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
     });
   };
 
-  // Quick switch alphabet: {0, 1} vs {a, b}
+  // Helper to add a symbol to alphabet
+  const handleAddSymbol = (sym: string) => {
+    const cleanSym = sym.trim();
+    if (!cleanSym || dfa.alphabet.includes(cleanSym)) return;
+    const newAlphabet = [...dfa.alphabet, cleanSym];
+    const newTransitions: Record<string, Record<string, string>> = {};
+    for (const st of dfa.states) {
+      newTransitions[st] = {
+        ...(dfa.transitions[st] || {}),
+        [cleanSym]: st, // default transition to itself
+      };
+    }
+    onChange({
+      ...dfa,
+      alphabet: newAlphabet,
+      transitions: newTransitions,
+    });
+    setNewSymbolInput('');
+  };
+
+  // Helper to remove a symbol from alphabet
+  const handleRemoveSymbol = (symToRemove: string) => {
+    if (dfa.alphabet.length <= 1) return;
+    const newAlphabet = dfa.alphabet.filter((a) => a !== symToRemove);
+    const newTransitions: Record<string, Record<string, string>> = {};
+    for (const st of dfa.states) {
+      newTransitions[st] = {};
+      for (const a of newAlphabet) {
+        newTransitions[st][a] = dfa.transitions[st]?.[a] || st;
+      }
+    }
+    onChange({
+      ...dfa,
+      alphabet: newAlphabet,
+      transitions: newTransitions,
+    });
+  };
+
+  // Quick switch alphabet preset
   const handleSwitchAlphabet = (presetAlphabet: string[]) => {
     const newTransitions: Record<string, Record<string, string>> = {};
     for (const st of dfa.states) {
@@ -119,6 +181,32 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
       ...dfa,
       alphabet: presetAlphabet,
       transitions: newTransitions,
+    });
+  };
+
+  // Action: New Blank DFA Template
+  const handleNewDFA = () => {
+    onChange({
+      states: ['q0', 'q1'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q1'],
+      transitions: {
+        q0: { '0': 'q0', '1': 'q1' },
+        q1: { '0': 'q0', '1': 'q1' },
+      },
+    });
+  };
+
+  // Action: Clear All Transitions (to test missing transitions validation)
+  const handleClearTransitions = () => {
+    const emptyTransitions: Record<string, Record<string, string>> = {};
+    for (const st of dfa.states) {
+      emptyTransitions[st] = {};
+    }
+    onChange({
+      ...dfa,
+      transitions: emptyTransitions,
     });
   };
 
@@ -186,13 +274,13 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
           </p>
           <ul className="list-disc list-inside space-y-1 text-slate-400">
             <li>
-              <strong>0-Equivalence:</strong> First, states in Final set <code className="text-emerald-400">F</code> are distinguished from states in Non-Final set <code className="text-slate-300">Q \ F</code> because the empty string ε distinguishes them.
+              <strong>0-Equivalence (Round 0):</strong> Pairs with exactly one final state and one non-final state are marked distinguishable by the empty string ε.
             </li>
             <li>
-              <strong>k-Equivalence:</strong> Iteratively, an unmarked pair <code className="text-slate-300">{"{p, q}"}</code> is marked if for any input symbol <code className="text-blue-400">a</code>, the next states <code className="text-slate-300">{"{δ(p, a), δ(q, a)}"}</code> are already marked as distinguishable.
+              <strong>k-Equivalence (Rounds 1..k):</strong> An unmarked pair <code className="text-slate-300">{"{p, q}"}</code> is marked if on any symbol <code className="text-blue-400">a</code>, the transitions <code className="text-slate-300">{"{δ(p, a), δ(q, a)}"}</code> lead to an already distinguished pair.
             </li>
             <li>
-              <strong>Equivalence Classes:</strong> All pairs left unmarked at termination cannot be distinguished by any string, hence <code className="text-amber-400">p ≡ q</code> and can be collapsed into a single state.
+              <strong>Equivalence Classes:</strong> Remaining unmarked pairs at fixed point are equivalent (<code className="text-amber-400">p ≡ q</code>) and unified via Union-Find into minimal DFA states.
             </li>
           </ul>
         </div>
@@ -200,27 +288,62 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
 
       {/* Main DFA Input Card */}
       <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-5 lg:p-6 shadow-xl space-y-6">
+        {/* Card Header & Global Operations Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
-            <h3 className="text-base font-semibold text-white">Unminimized DFA Configuration</h3>
+            <h3 className="text-base font-semibold text-white">DFA Specification & Matrix</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Edit states, alphabet, start state, accepting states, and the transition table below.
+              Define states, alphabet, start state, final states, and transition table δ.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleAddState}
-              disabled={dfa.states.length >= 8}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg border border-slate-700 transition"
-              title="Add a state (Max 8)"
+              onClick={() => setJsonModalMode('import')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+              title="Import DFA from JSON"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add State</span>
+              <Upload className="w-3.5 h-3.5" />
+              <span>Import JSON</span>
             </button>
+
+            <button
+              onClick={() => setJsonModalMode('export')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+              title="Export DFA to JSON"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export JSON</span>
+            </button>
+
+            <button
+              onClick={handleNewDFA}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+              title="Start a new 2-state DFA"
+            >
+              <FilePlus2 className="w-3.5 h-3.5" />
+              <span>New DFA</span>
+            </button>
+
+            <button
+              onClick={handleClearTransitions}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
+              title="Clear all transitions to test validation"
+            >
+              <Eraser className="w-3.5 h-3.5" />
+              <span>Clear δ</span>
+            </button>
+
             <button
               onClick={onRunMinimization}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-md shadow-blue-600/30 transition active:scale-95"
+              disabled={!validation.isValid}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg shadow-md transition ${
+                validation.isValid
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95 cursor-pointer'
+                  : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
+              }`}
+              title={validation.isValid ? 'Run Table-Filling Algorithm' : 'Fix validation errors before running'}
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Run Algorithm</span>
@@ -228,16 +351,49 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
           </div>
         </div>
 
+        {/* VALIDATION STATUS BANNER */}
+        {validation.isValid ? (
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-300">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span className="font-bold">✓ Valid DFA</span>
+              <span className="text-emerald-400/80">
+                · All {dfa.states.length} states and {dfa.alphabet.length * dfa.states.length} transitions are complete and consistent.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-rose-300 font-bold">
+              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>✕ Invalid DFA ({validation.errors.length} issue{validation.errors.length > 1 ? 's' : ''} detected)</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-rose-300/90 pl-1 font-mono">
+              {validation.errors.slice(0, 5).map((err, idx) => (
+                <li key={idx} className="leading-relaxed">
+                  <span className="font-semibold">{err.message}</span>
+                  {err.details && <span className="text-[11px] text-rose-400/80 font-sans ml-2">({err.details})</span>}
+                </li>
+              ))}
+              {validation.errors.length > 5 && (
+                <li className="text-slate-400 font-sans">
+                  ...and {validation.errors.length - 5} more issues.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         {/* Unreachable states warning if any */}
-        {unreachableStates.length > 0 && (
+        {unreachableStates.length > 0 && validation.isValid && (
           <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
             <div>
               <p className="font-semibold text-amber-200">
-                Unreachable States Detected: {unreachableStates.join(', ')}
+                Unreachable State(s) Detected: {unreachableStates.join(', ')}
               </p>
               <p className="text-amber-400/80 mt-0.5">
-                These states cannot be reached from the start state <code className="font-mono">{dfa.startState}</code>. The Table-Filling algorithm automatically eliminates unreachable states so the minimal DFA contains only productive reachable states.
+                These states cannot be reached from the start state <code className="font-mono">{dfa.startState}</code>. The Table-Filling algorithm automatically prunes unreachable states from the minimal machine.
               </p>
             </div>
           </div>
@@ -246,7 +402,7 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
         {/* Global DFA Settings Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Alphabet Configuration */}
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-300">Alphabet (Σ)</span>
               <div className="flex items-center gap-1 text-[11px]">
@@ -270,52 +426,103 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
                 >
                   {'{a, b}'}
                 </button>
+                <button
+                  onClick={() => handleSwitchAlphabet(['0', '1', '2'])}
+                  className={`px-2 py-0.5 rounded font-mono ${
+                    dfa.alphabet.join(',') === '0,1,2'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-slate-200 bg-slate-800'
+                  }`}
+                >
+                  {'{0,1,2}'}
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-1">
+
+            {/* Alphabet chips with removal */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               {dfa.alphabet.map((sym) => (
                 <span
                   key={sym}
-                  className="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700 font-mono font-bold text-sm text-blue-400"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 font-mono font-bold text-xs text-blue-400"
                 >
-                  {sym}
+                  <span>{sym}</span>
+                  {dfa.alphabet.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveSymbol(sym)}
+                      className="text-slate-500 hover:text-rose-400 ml-0.5 transition"
+                      title={`Remove symbol '${sym}'`}
+                    >
+                      ×
+                    </button>
+                  )}
                 </span>
               ))}
+            </div>
+
+            {/* Add symbol input */}
+            <div className="flex items-center gap-1.5 pt-1">
+              <input
+                type="text"
+                maxLength={3}
+                placeholder="New symbol"
+                value={newSymbolInput}
+                onChange={(e) => setNewSymbolInput(e.target.value.trim())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddSymbol(newSymbolInput);
+                }}
+                className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-200 focus:outline-hidden focus:border-blue-500"
+              />
+              <button
+                onClick={() => handleAddSymbol(newSymbolInput)}
+                disabled={!newSymbolInput || dfa.alphabet.includes(newSymbolInput)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs text-slate-300 transition"
+              >
+                + Add
+              </button>
             </div>
           </div>
 
           {/* Start State Selection */}
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
-            <span className="text-xs font-semibold text-slate-300">Start State (q₀)</span>
-            <div className="pt-1">
+          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300">Start State (q₀)</span>
+              <span className="text-[11px] font-mono text-blue-400">→ {dfa.startState || 'None'}</span>
+            </div>
+            <div>
               <select
                 value={dfa.startState}
                 onChange={(e) => handleSetStartState(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-medium text-slate-200 focus:outline-hidden focus:border-blue-500"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-medium text-slate-200 focus:outline-hidden focus:border-blue-500"
               >
                 {dfa.states.map((st) => (
                   <option key={st} value={st}>
-                    {st} (Start)
+                    → {st} {dfa.finalStates.includes(st) ? '(* Final)' : ''}
                   </option>
                 ))}
               </select>
             </div>
+            <p className="text-[11px] text-slate-400">
+              Initial state where computation begins.
+            </p>
           </div>
 
           {/* Accepting / Final States Toggle */}
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-300">Final States (F)</span>
-              <span className="text-[11px] text-slate-500">Click state to toggle</span>
+              <span className="text-[11px] text-emerald-400 font-mono">
+                {dfa.finalStates.length} of {dfa.states.length} accepting
+              </span>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-1">
+            <div className="flex flex-wrap gap-1.5">
               {dfa.states.map((st) => {
                 const isFinal = dfa.finalStates.includes(st);
                 return (
                   <button
                     key={st}
                     onClick={() => handleToggleFinalState(st)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition cursor-pointer ${
                       isFinal
                         ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 shadow-xs'
                         : 'bg-slate-800/60 text-slate-400 border border-slate-700/60 hover:text-slate-200'
@@ -326,18 +533,45 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
                 );
               })}
             </div>
+            <p className="text-[11px] text-slate-400">
+              Click state chips above to toggle acceptance.
+            </p>
           </div>
         </div>
 
         {/* Transition Table Matrix */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              State Transition Table (δ)
-            </h4>
-            <span className="text-xs text-slate-500">
-              Legend: <span className="text-blue-400 font-semibold">→ Start</span> · <span className="text-emerald-400 font-semibold">* Final</span>
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                State Transition Table (δ)
+              </h4>
+              <span className="text-xs text-slate-500">
+                ({dfa.states.length} states × {dfa.alphabet.length} symbols)
+              </span>
+            </div>
+
+            {/* Quick Add State Input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="State name"
+                value={newStateInput}
+                onChange={(e) => setNewStateInput(e.target.value.trim())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddState(newStateInput);
+                }}
+                className="w-28 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-200 focus:outline-hidden focus:border-blue-500"
+              />
+              <button
+                onClick={() => handleAddState(newStateInput)}
+                disabled={dfa.states.length >= 10}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg border border-slate-700 transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add State</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/80">
@@ -345,13 +579,13 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
               <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4 font-semibold">State (q)</th>
-                  <th className="py-3 px-4 font-semibold">Type</th>
+                  <th className="py-3 px-4 font-semibold">Classification</th>
                   {dfa.alphabet.map((sym) => (
                     <th key={sym} className="py-3 px-4 font-semibold font-mono text-center">
                       δ(q, {sym})
                     </th>
                   ))}
-                  <th className="py-3 px-3 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-3 font-semibold text-right">Delete</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/70 font-mono">
@@ -379,29 +613,36 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
                         )}
                       </td>
 
-                      {/* State status */}
+                      {/* State classification */}
                       <td className="py-2.5 px-4 font-sans text-[11px] text-slate-400">
                         {isStart && isFinal ? (
-                          <span className="text-cyan-400">Start & Final</span>
+                          <span className="text-cyan-400 font-medium">Start & Final</span>
                         ) : isStart ? (
-                          <span className="text-blue-400">Start State</span>
+                          <span className="text-blue-400 font-medium">Start State</span>
                         ) : isFinal ? (
-                          <span className="text-emerald-400">Accepting</span>
+                          <span className="text-emerald-400 font-medium">Accepting</span>
                         ) : (
-                          <span className="text-slate-500">Regular</span>
+                          <span className="text-slate-500">Non-Final</span>
                         )}
                       </td>
 
-                      {/* Transitions for each symbol */}
+                      {/* Transition selectors for each alphabet symbol */}
                       {dfa.alphabet.map((sym) => {
-                        const target = dfa.transitions[st]?.[sym] || dfa.states[0];
+                        const target = dfa.transitions[st]?.[sym] ?? '';
+                        const hasError = !target || !dfa.states.includes(target);
+
                         return (
                           <td key={sym} className="py-2.5 px-4 text-center">
                             <select
                               value={target}
                               onChange={(e) => handleTransitionChange(st, sym, e.target.value)}
-                              className="bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-hidden focus:border-blue-500 transition cursor-pointer"
+                              className={`rounded-lg px-2.5 py-1 text-xs font-mono transition cursor-pointer ${
+                                hasError
+                                  ? 'bg-rose-950/80 border border-rose-600 text-rose-300 font-bold focus:ring-1 focus:ring-rose-500'
+                                  : 'bg-slate-900 border border-slate-700/80 text-slate-100 focus:outline-hidden focus:border-blue-500'
+                              }`}
                             >
+                              <option value="">— (missing)</option>
                               {dfa.states.map((opt) => (
                                 <option key={opt} value={opt}>
                                   {opt}
@@ -412,12 +653,12 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
                         );
                       })}
 
-                      {/* Delete action */}
+                      {/* Delete state button */}
                       <td className="py-2.5 px-3 text-right">
                         <button
                           onClick={() => handleRemoveState(st)}
-                          disabled={dfa.states.length <= 2}
-                          className="p-1 rounded text-slate-500 hover:text-red-400 disabled:opacity-30 disabled:pointer-events-none transition"
+                          disabled={dfa.states.length <= 1}
+                          className="p-1 rounded text-slate-500 hover:text-rose-400 disabled:opacity-30 disabled:pointer-events-none transition"
                           title="Delete this state"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -431,6 +672,15 @@ export const DFAEditor: React.FC<DFAEditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* JSON Modal for Import/Export */}
+      <JSONModal
+        isOpen={jsonModalMode !== null}
+        onClose={() => setJsonModalMode(null)}
+        dfa={dfa}
+        onImportDFA={onChange}
+        mode={jsonModalMode || 'export'}
+      />
     </div>
   );
 };

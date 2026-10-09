@@ -95,4 +95,39 @@ export const DFA_PRESETS: DFAPreset[] = [
       },
     },
   },
+  {
+    id: 'transitive_equiv_demo',
+    name: 'Transitive Equivalence [q1, q2, q3]',
+    description: 'Directly tests Test 5: (q1, q2) and (q2, q3) are equivalent, merging into single transitive class [q1, q2, q3].',
+    sampleTestString: '01',
+    dfa: {
+      states: ['q0', 'q1', 'q2', 'q3'],
+      alphabet: ['0', '1'],
+      startState: 'q0',
+      finalStates: ['q1', 'q2', 'q3'],
+      transitions: {
+        q0: { '0': 'q1', '1': 'q2' },
+        q1: { '0': 'q1', '1': 'q2' },
+        q2: { '0': 'q3', '1': 'q2' },
+        q3: { '0': 'q1', '1': 'q2' },
+      },
+    },
+  },
+  {
+    id: 'ternary_self_loops',
+    name: 'Ternary Alphabet {a, b, c} & Self-Loops',
+    description: 'Tests 3-symbol alphabet Σ = {a, b, c} with self-loops. Verifies every transition symbol is validated and processed.',
+    sampleTestString: 'abc',
+    dfa: {
+      states: ['q0', 'q1', 'q2'],
+      alphabet: ['a', 'b', 'c'],
+      startState: 'q0',
+      finalStates: ['q2'],
+      transitions: {
+        q0: { 'a': 'q0', 'b': 'q1', 'c': 'q0' },
+        q1: { 'a': 'q1', 'b': 'q2', 'c': 'q1' },
+        q2: { 'a': 'q2', 'b': 'q2', 'c': 'q2' },
+      },
+    },
+  },
 ];

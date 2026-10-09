@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, RotateCcw, Check } from 'lucide-react';
+import { Download, RotateCcw, Check, Sun, Moon, Menu, X } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { PWAInstallModal } from './PWAInstallModal';
 
@@ -7,15 +7,20 @@ interface HeaderProps {
   onResetToDefault: () => void;
   activeSection: string;
   onNavigateSection: (sectionId: string) => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onResetToDefault,
   activeSection,
   onNavigateSection,
+  theme = 'dark',
+  onToggleTheme,
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleInstallClick = async () => {
     if (isInstallable) {
@@ -28,76 +33,95 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const navItems = [
+    { id: 'home', label: 'Home' },
+    { id: 'dfa-input', label: 'DFA Input' },
+    { id: 'table-grid', label: 'Table Filling' },
+    { id: 'equivalence-classes', label: 'Equivalence Classes' },
+    { id: 'minimized-dfa', label: 'Minimized DFA' },
+    { id: 'learn-theory', label: 'Learn / Theory' },
+  ];
+
+  const handleNavClick = (id: string) => {
+    onNavigateSection(id);
+    setMobileMenuOpen(false);
+  };
+
   return (
     <>
-      <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3.5 transition">
+      <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          {/* Zone 1: Brand title, single line text element */}
-          <a
-            href="/"
-            className="text-lg font-bold tracking-tight text-white flex items-center gap-2.5 group shrink-0"
-          >
-            <span className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-mono font-bold text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              MN
-            </span>
-            <span>Table-Filling Engine</span>
-          </a>
+          {/* Zone 1: Brand title */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Mobile menu toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              aria-label="Toggle navigation"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
 
-          {/* Zone 2: 4-6 nav links, 1-2 word labels, single-line */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
             <button
-              onClick={() => onNavigateSection('dfa-input')}
-              className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap ${
-                activeSection === 'dfa-input' ? 'text-blue-400 border-b-2 border-blue-400 font-semibold' : ''
-              }`}
+              onClick={() => handleNavClick('home')}
+              className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2.5 group cursor-pointer text-left"
             >
-              DFA Table
+              <span className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-mono font-bold text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform shrink-0">
+                MN
+              </span>
+              <span className="whitespace-nowrap font-extrabold tracking-tight">
+                TABLE-FILLING ALGORITHM ENGINE
+              </span>
             </button>
-            <button
-              onClick={() => onNavigateSection('table-grid')}
-              className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap ${
-                activeSection === 'table-grid' ? 'text-blue-400 border-b-2 border-blue-400 font-semibold' : ''
-              }`}
-            >
-              Triangular Grid
-            </button>
-            <button
-              onClick={() => onNavigateSection('equivalence-classes')}
-              className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap ${
-                activeSection === 'equivalence-classes' ? 'text-blue-400 border-b-2 border-blue-400 font-semibold' : ''
-              }`}
-            >
-              Equivalence Classes
-            </button>
-            <button
-              onClick={() => onNavigateSection('minimized-table')}
-              className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap ${
-                activeSection === 'minimized-table' ? 'text-blue-400 border-b-2 border-blue-400 font-semibold' : ''
-              }`}
-            >
-              Minimized DFA
-            </button>
-            <button
-              onClick={() => onNavigateSection('simulator')}
-              className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap ${
-                activeSection === 'simulator' ? 'text-blue-400 border-b-2 border-blue-400 font-semibold' : ''
-              }`}
-            >
-              String Tester
-            </button>
+          </div>
+
+          {/* Zone 2: Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-5 text-xs sm:text-sm font-medium text-slate-400">
+            {navItems.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`hover:text-white transition-colors pb-0.5 whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'text-blue-400 border-b-2 border-blue-400 font-semibold'
+                      : ''
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Zone 3: 1-2 primary actions */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Install Desktop App Button */}
+          {/* Zone 3: 1-2 primary actions: [Theme] [Install App] [Reset] */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Theme Toggle Button */}
+            {onToggleTheme && (
+              <button
+                onClick={onToggleTheme}
+                className="p-1.5 text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 rounded-lg transition active:scale-95 cursor-pointer"
+                title={theme === 'dark' ? 'Switch to Light theme' : 'Switch to Dark theme'}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-indigo-400" />
+                )}
+              </button>
+            )}
+
+            {/* Install App Button - Exactly ONE location in entire app */}
             {!isInstalled ? (
               <button
                 onClick={handleInstallClick}
-                className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shadow-blue-500/20 transition whitespace-nowrap active:scale-95"
-                title="Install application onto your desktop computer"
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shadow-blue-500/20 transition whitespace-nowrap active:scale-95 cursor-pointer"
+                title="Install application onto your system"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Install Desktop App</span>
+                <span>Install App</span>
               </button>
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 rounded-lg">
@@ -106,9 +130,10 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
+            {/* Reset Button */}
             <button
               onClick={onResetToDefault}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 rounded-lg transition whitespace-nowrap active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 rounded-lg transition whitespace-nowrap active:scale-95 cursor-pointer"
               title="Reset to default textbook example"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -116,6 +141,25 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-3 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-150">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`px-3 py-2 rounded-lg text-left transition ${
+                  activeSection === item.id
+                    ? 'bg-blue-600/20 text-blue-400 font-semibold'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <PWAInstallModal
